@@ -7,31 +7,42 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="dashboard-container">
-        <!-- Sidebar -->
+    <div id="login-screen" class="login-container">
+        <h2>Catatan Pribadi</h2>
+        <p>Silakan masuk untuk mengakses dashboard</p>
+        <button id="login-btn">Masuk dengan Akun Google</button>
+    </div>
+
+    <div id="dashboard-screen" class="dashboard-container" style="display: none;">
+        
         <aside class="sidebar">
             <h2>MyNotes</h2>
-            <p>Dashboard pribadi Anda</p>
+            <p id="user-name">Memuat...</p>
+            <button id="logout-btn" style="background-color: #e74c3c; margin-top: 20px;">Keluar Sistem</button>
         </aside>
 
-        <!-- Konten Utama -->
         <main class="main-content">
             <h1>Catatan Baru</h1>
             
-            <!-- Area Input Catatan -->
             <div class="note-input-area">
-                <input type="text" id="note-title" placeholder="Judul Catatan...">
+                <div class="input-group">
+                    <input type="text" id="note-title" placeholder="Judul Catatan..." style="flex: 1;">
+                    <select id="note-category">
+                        <option value="Umum">Umum</option>
+                        <option value="Kampus">Kampus / Kuliah</option>
+                        <option value="Magang">Magang (PT GS Battery)</option>
+                        <option value="Proyek">Proyek IoT</option>
+                    </select>
+                </div>
                 <textarea id="note-body" placeholder="Tulis sesuatu di sini..."></textarea>
                 <button id="save-btn">Simpan Catatan</button>
             </div>
-
-            <!-- Area Tampilan Catatan -->
+            
             <hr>
             <h2>Daftar Catatan</h2>
-            <div id="notes-container" class="notes-grid">
-                <!-- Catatan yang disimpan akan muncul di sini -->
-            </div>
+            <div id="notes-container" class="notes-grid"></div>
         </main>
+        
     </div>
 
     <script type="module" src="script.js"></script>
