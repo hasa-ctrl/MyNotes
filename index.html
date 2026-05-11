@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Catatan</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <h2>MyNotes</h2>
+            <p>Dashboard pribadi Anda</p>
+        </aside>
+
+        <!-- Konten Utama -->
+        <main class="main-content">
+            <h1>Catatan Baru</h1>
+            
+            <!-- Area Input Catatan -->
+            <div class="note-input-area">
+                <input type="text" id="note-title" placeholder="Judul Catatan...">
+                <textarea id="note-body" placeholder="Tulis sesuatu di sini..."></textarea>
+                <button id="save-btn">Simpan Catatan</button>
+            </div>
+
+            <!-- Area Tampilan Catatan -->
+            <hr>
+            <h2>Daftar Catatan</h2>
+            <div id="notes-container" class="notes-grid">
+                <!-- Catatan yang disimpan akan muncul di sini -->
+            </div>
+        </main>
+    </div>
+
+    <script type="module" src="script.js"></script>
+</body>
+</html>
