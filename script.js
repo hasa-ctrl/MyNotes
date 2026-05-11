@@ -1,8 +1,9 @@
-// 1. Import sistem Firebase dari internet (CDN)
+// 1. Import sistem Firebase dan Auth
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, serverTimestamp, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
-// 2. Konfigurasi Firebase Anda (Sesuai dengan screenshot yang Anda kirim)
+// 2. Konfigurasi Firebase Anda (PASTIKAN MENGGUNAKAN API KEY ANDA SENDIRI)
 const firebaseConfig = {
     apiKey: "AIzaSyAng1Bv6vEjbVbupYnVM__T7pJoocZ1XC4",
     authDomain: "mynotes-app-16caf.firebaseapp.com",
@@ -13,43 +14,99 @@ const firebaseConfig = {
     measurementId: "G-EN97PLE8XT"
 };
 
-// 3. Menyalakan Firebase dan Database (Firestore)
+// 3. Menyalakan Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
 
-// 4. Mengambil elemen dari HTML
+// 4. Elemen HTML
 const titleInput = document.getElementById('note-title');
+const categoryInput = document.getElementById('note-category');
 const bodyInput = document.getElementById('note-body');
 const saveBtn = document.getElementById('save-btn');
 const notesContainer = document.getElementById('notes-container');
 
-// 5. Fungsi untuk MENARIK & MENAMPILKAN data secara Real-Time
-// Mengurutkan catatan dari yang paling baru
-const q = query(collection(db, "notes"), orderBy("createdAt", "desc"));
+// Elemen Auth HTML
+const loginScreen = document.getElementById('login-screen');
+const dashboardScreen = document.getElementById('dashboard-screen');
+const loginBtn = document.getElementById('login-btn');
+const logoutBtn = document.getElementById('logout-btn');
+const userNameDisplay = document.getElementById('user-name');
 
-onSnapshot(q, (snapshot) => {
-    notesContainer.innerHTML = ''; // Kosongkan layar dulu
-    
-    snapshot.forEach((docSnap) => {
-        const note = docSnap.data();
-        const noteId = docSnap.id; // ID unik dari Firebase
+let currentUser = null; 
+let unsubscribeSnapshot = null; 
 
-        const noteElement = document.createElement('div');
-        noteElement.classList.add('note-card');
-
-        noteElement.innerHTML = `
-            <div>
-                <h3>${note.title}</h3>
-                <p>${note.body}</p>
-            </div>
-            <button class="delete-btn" onclick="deleteNote('${noteId}')">Hapus</button>
-        `;
-
-        notesContainer.appendChild(noteElement);
-    });
+// 5. Sistem Pemantau Status Login
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        // Jika Berhasil Login
+        currentUser = user;
+        loginScreen.style.display = 'none';
+        dashboardScreen.style.display = 'flex';
+        userNameDisplay.textContent = `Halo, ${user.displayName}`;
+        loadNotes(); // Mulai tarik data
+    } else {
+        // Jika Logout / Belum Login
+        currentUser = null;
+        loginScreen.style.display = 'flex';
+        dashboardScreen.style.display = 'none';
+        if (unsubscribeSnapshot) unsubscribeSnapshot(); // Hentikan aliran data demi keamanan
+    }
 });
 
-// 6. Fungsi untuk MENGIRIM catatan baru ke Firebase
+// 6. Tombol Aksi Login & Logout
+loginBtn.addEventListener('click', () => {
+    signInWithPopup(auth, provider).catch((error) => console.error("Error login:", error));
+});
+
+logoutBtn.addEventListener('click', () => {
+    signOut(auth);
+});
+
+// 7. Fungsi untuk MENARIK Data Khusus Milik User yang Sedang Login
+function loadNotes() {
+    // Memfilter data: HANYA ambil data di mana userId sama dengan ID Anda
+    const q = query(collection(db, "notes"), where("userId", "==", currentUser.uid));
+
+    unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
+        notesContainer.innerHTML = ''; 
+        
+        const notesArray = [];
+        snapshot.forEach((docSnap) => {
+            notesArray.push({ id: docSnap.id, ...docSnap.data() });
+        });
+
+        // Mengurutkan data terbaru di atas menggunakan JavaScript
+        notesArray.sort((a, b) => {
+            const timeA = a.createdAt ? a.createdAt.toMillis() : 0;
+            const timeB = b.createdAt ? b.createdAt.toMillis() : 0;
+            return timeB - timeA;
+        });
+
+        // Menampilkan ke layar
+        notesArray.forEach((note) => {
+            const dateStr = note.createdAt ? note.createdAt.toDate().toLocaleString('id-ID') : 'Baru saja';
+            const categoryLabel = note.category ? note.category : 'Umum';
+
+            const noteElement = document.createElement('div');
+            noteElement.classList.add('note-card');
+
+            noteElement.innerHTML = `
+                <div>
+                    <span class="badge badge-${categoryLabel}">${categoryLabel}</span>
+                    <h3>${note.title}</h3>
+                    <p class="note-date">${dateStr}</p>
+                    <p>${note.body}</p>
+                </div>
+                <button class="delete-btn" onclick="deleteNote('${note.id}')">Hapus</button>
+            `;
+            notesContainer.appendChild(noteElement);
+        });
+    });
+}
+
+// 8. Fungsi Simpan Catatan (Dilengkapi User ID)
 async function addNote() {
     const titleValue = titleInput.value.trim();
     const bodyValue = bodyInput.value.trim();
@@ -60,33 +117,29 @@ async function addNote() {
     }
 
     try {
-        // Mengirim data ke koleksi "notes" di Firestore
         await addDoc(collection(db, "notes"), {
             title: titleValue,
             body: bodyValue,
-            createdAt: serverTimestamp() // Catat waktu pembuatan
+            category: categoryInput.value,
+            createdAt: serverTimestamp(),
+            userId: currentUser.uid // MENYIMPAN ID PEMILIK CATATAN
         });
 
-        // Kosongkan form setelah berhasil disimpan
         titleInput.value = '';
         bodyInput.value = '';
     } catch (error) {
-        console.error("Gagal menyimpan catatan: ", error);
-        alert("Terjadi kesalahan saat menyimpan data.");
+        console.error("Gagal menyimpan:", error);
     }
 }
 
-// 7. Fungsi untuk MENGHAPUS catatan dari Firebase
+// 9. Fungsi Hapus Catatan
 async function deleteNote(id) {
     try {
         await deleteDoc(doc(db, "notes", id));
     } catch (error) {
-        console.error("Gagal menghapus catatan: ", error);
+        console.error("Gagal menghapus:", error);
     }
 }
 
-// Menyambungkan fungsi hapus ke layar (karena menggunakan type="module")
 window.deleteNote = deleteNote;
-
-// Menjalankan fungsi simpan saat tombol diklik
 saveBtn.addEventListener('click', addNote);
